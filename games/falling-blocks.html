@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  Falling Blocks is a compact block-stacking puzzle.
+
+  This file introduces a common game-programming idea: the board is not stored
+  as HTML. It is a 2D JavaScript array, and the canvas is redrawn from that
+  array every frame. If you know C++, think of board[y][x] as a simple grid.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Falling Blocks">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Falling Blocks</title>
+<style>
+  :root {
+    --red: #E8173A;
+    --yellow: #F5C400;
+    --blue: #0057B8;
+    --green: #00964B;
+    --dark: #111114;
+    --panel: #1C1C21;
+    --border: rgba(255,255,255,.1);
+    --text: #F0EEE8;
+    --muted: rgba(240,238,232,.58);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at 10% 4%, rgba(0,150,75,.2), transparent 22rem),
+      radial-gradient(circle at 90% 8%, rgba(232,23,58,.16), transparent 20rem),
+      var(--dark);
+    color: var(--text);
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  button { font: inherit; }
+
+  main {
+    width: min(900px, 100%);
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: 16px 14px 34px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 7vw, 4rem);
+    line-height: .95;
+    letter-spacing: 0;
+  }
+
+  .back {
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 9px 12px;
+    background: rgba(255,255,255,.045);
+    white-space: nowrap;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)), var(--panel);
+    box-shadow: 0 16px 34px rgba(0,0,0,.22);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(210px, 260px);
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .stage {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .hud {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .stat {
+    min-height: 62px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    padding: 10px;
+  }
+
+  .stat span {
+    display: block;
+    color: var(--muted);
+    font-size: .68rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat strong {
+    font-size: 1.35rem;
+    line-height: 1;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .board-frame {
+    width: min(100%, 360px);
+    aspect-ratio: 1 / 2;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #0B0B0E;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  .message {
+    min-height: 24px;
+    color: var(--muted);
+    text-align: center;
+    font-size: .9rem;
+  }
+
+  .controls {
+    padding: 12px;
+    display: grid;
+    gap: 12px;
+    align-content: center;
+  }
+
+  .control-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .wide {
+    grid-column: span 3;
+  }
+
+  .button {
+    min-height: 54px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.13);
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 950;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    background:
+      radial-gradient(circle at 35% 22%, rgba(255,255,255,.2), transparent 30%),
+      linear-gradient(160deg, #34343d, #18181f);
+    box-shadow:
+      inset 0 2px 2px rgba(255,255,255,.12),
+      inset 0 -5px 8px rgba(0,0,0,.34),
+      0 6px 0 #101015,
+      0 12px 18px rgba(0,0,0,.28);
+  }
+
+  .button.primary {
+    background:
+      radial-gradient(circle at 35% 22%, rgba(255,255,255,.34), transparent 30%),
+      linear-gradient(160deg, #18c96b, var(--green) 48%, #053319);
+    box-shadow:
+      inset 0 3px 3px rgba(255,255,255,.16),
+      inset 0 -8px 10px rgba(0,0,0,.34),
+      0 7px 0 #032011,
+      0 15px 22px rgba(0,0,0,.36);
+  }
+
+  .button:active {
+    transform: translateY(4px) scale(.985);
+    box-shadow:
+      inset 0 3px 7px rgba(0,0,0,.34),
+      inset 0 -3px 5px rgba(255,255,255,.06),
+      0 2px 0 #101015,
+      0 7px 12px rgba(0,0,0,.24);
+  }
+
+  @media (max-width: 760px) {
+    header { align-items: flex-start; flex-direction: column; }
+    .layout { grid-template-columns: 1fr; }
+    .hud { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Falling Blocks</h1>
+    <a class="back" href="../index.html">App Shelf</a>
+  </header>
+
+  <section class="layout" aria-label="Falling Blocks game">
+    <section class="panel stage">
+      <div class="hud" aria-label="Game status">
+        <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Lines</span><strong id="lines">0</strong></div>
+        <div class="stat"><span>Level</span><strong id="level">1</strong></div>
+        <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+      </div>
+
+      <div class="board-frame">
+        <canvas id="board" width="240" height="480" aria-label="Falling Blocks board"></canvas>
+      </div>
+
+      <div class="message" id="message">Ready.</div>
+    </section>
+
+    <section class="panel controls" aria-label="Game controls">
+      <button class="button primary" onclick="startPause()" id="start-button">Start</button>
+      <button class="button" onclick="resetGame()">Reset</button>
+      <div class="control-grid">
+        <button class="button" onclick="movePiece(-1)" aria-label="Move left">&lt;</button>
+        <button class="button" onclick="rotatePiece()" aria-label="Rotate">Turn</button>
+        <button class="button" onclick="movePiece(1)" aria-label="Move right">&gt;</button>
+        <button class="button" onclick="softDrop()" aria-label="Move down">v</button>
+        <button class="button wide" onclick="hardDrop()">Drop</button>
+      </div>
+    </section>
+  </section>
+</main>
+
+<script>
+/*
+  Board representation.
+
+  Empty cells are null. Filled cells store a color string. This makes collision
+  tests simple: if a matrix cell overlaps a non-null board cell, it cannot move.
+*/
+const COLS = 10;
+const ROWS = 20;
+const CELL = 24;
+const BEST_KEY = 'falling_blocks_best';
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+const SHAPES = [
+  { color: '#3EB7FF', cells: [[1, 1, 1, 1]] },
+  { color: '#F5C400', cells: [[1, 1], [1, 1]] },
+  { color: '#9B5CFF', cells: [[0, 1, 0], [1, 1, 1]] },
+  { color: '#00964B', cells: [[0, 1, 1], [1, 1, 0]] },
+  { color: '#E8173A', cells: [[1, 1, 0], [0, 1, 1]] },
+  { color: '#F05A28', cells: [[1, 0, 0], [1, 1, 1]] },
+  { color: '#0057B8', cells: [[0, 0, 1], [1, 1, 1]] }
+];
+
+let board = [];
+let piece = null;
+let nextPiece = null;
+let score = 0;
+let lines = 0;
+let level = 1;
+let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
+let running = false;
+let paused = false;
+let gameOver = false;
+let frameId = 0;
+let lastTime = 0;
+let dropElapsed = 0;
+
+function makeBoard() {
+  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+}
+
+function cloneMatrix(matrix) {
+  return matrix.map(row => row.slice());
+}
+
+function randomPiece() {
+  const source = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+  return {
+    cells: cloneMatrix(source.cells),
+    color: source.color,
+    x: 0,
+    y: 0
+  };
+}
+
+function resetGame() {
+  cancelAnimationFrame(frameId);
+  board = makeBoard();
+  score = 0;
+  lines = 0;
+  level = 1;
+  running = false;
+  paused = false;
+  gameOver = false;
+  lastTime = 0;
+  dropElapsed = 0;
+  nextPiece = randomPiece();
+  spawnPiece();
+  setMessage('Ready.');
+  updateLabels();
+  draw();
+}
+
+function startPause() {
+  if (gameOver) resetGame();
+
+  if (!running) {
+    running = true;
+    paused = false;
+    setMessage('');
+    lastTime = 0;
+    frameId = requestAnimationFrame(loop);
+  } else {
+    paused = !paused;
+    setMessage(paused ? 'Paused.' : '');
+    if (!paused) {
+      lastTime = 0;
+      frameId = requestAnimationFrame(loop);
+    }
+  }
+
+  updateLabels();
+}
+
+function loop(timestamp) {
+  if (!running || paused || gameOver) return;
+
+  if (!lastTime) lastTime = timestamp;
+  const dt = timestamp - lastTime;
+  lastTime = timestamp;
+  dropElapsed += dt;
+
+  if (dropElapsed >= dropDelay()) {
+    stepDown();
+    dropElapsed = 0;
+  }
+
+  draw();
+  frameId = requestAnimationFrame(loop);
+}
+
+function dropDelay() {
+  return Math.max(120, 720 - (level - 1) * 70);
+}
+
+function spawnPiece() {
+  piece = nextPiece || randomPiece();
+  nextPiece = randomPiece();
+  piece.x = Math.floor((COLS - piece.cells[0].length) / 2);
+  piece.y = 0;
+
+  if (collides(piece.x, piece.y, piece.cells)) {
+    endGame();
+  }
+}
+
+function collides(px, py, matrix) {
+  for (let y = 0; y < matrix.length; y++) {
+    for (let x = 0; x < matrix[y].length; x++) {
+      if (!matrix[y][x]) continue;
+
+      const boardX = px + x;
+      const boardY = py + y;
+      if (boardX < 0 || boardX >= COLS || boardY >= ROWS) return true;
+      if (boardY >= 0 && board[boardY][boardX]) return true;
+    }
+  }
+  return false;
+}
+
+function movePiece(dx) {
+  if (!canUseControls()) return;
+  if (!collides(piece.x + dx, piece.y, piece.cells)) piece.x += dx;
+  draw();
+}
+
+function softDrop() {
+  if (!canUseControls()) return;
+  stepDown();
+  dropElapsed = 0;
+  draw();
+}
+
+function hardDrop() {
+  if (!canUseControls()) return;
+  while (!collides(piece.x, piece.y + 1, piece.cells)) {
+    piece.y++;
+    score += 2;
+  }
+  lockPiece();
+  draw();
+}
+
+function rotatePiece() {
+  if (!canUseControls()) return;
+
+  const rotated = rotateClockwise(piece.cells);
+  for (const offset of [0, -1, 1, -2, 2]) {
+    if (!collides(piece.x + offset, piece.y, rotated)) {
+      piece.x += offset;
+      piece.cells = rotated;
+      draw();
+      return;
+    }
+  }
+}
+
+function canUseControls() {
+  return piece && !gameOver && running && !paused;
+}
+
+function rotateClockwise(matrix) {
+  const result = [];
+  for (let x = 0; x < matrix[0].length; x++) {
+    const row = [];
+    for (let y = matrix.length - 1; y >= 0; y--) {
+      row.push(matrix[y][x]);
+    }
+    result.push(row);
+  }
+  return result;
+}
+
+function stepDown() {
+  if (!piece) return;
+  if (!collides(piece.x, piece.y + 1, piece.cells)) {
+    piece.y++;
+    return;
+  }
+
+  lockPiece();
+}
+
+function lockPiece() {
+  forEachPieceCell((x, y) => {
+    if (y >= 0) board[y][x] = piece.color;
+  });
+
+  clearFullLines();
+  spawnPiece();
+  saveBestIfNeeded();
+  updateLabels();
+}
+
+function clearFullLines() {
+  let cleared = 0;
+
+  for (let y = ROWS - 1; y >= 0; y--) {
+    if (!board[y].every(Boolean)) continue;
+    board.splice(y, 1);
+    board.unshift(Array(COLS).fill(null));
+    cleared++;
+    y++;
+  }
+
+  if (!cleared) return;
+  const points = [0, 100, 300, 500, 800][cleared] * level;
+  score += points;
+  lines += cleared;
+  level = 1 + Math.floor(lines / 10);
+}
+
+function forEachPieceCell(callback) {
+  for (let y = 0; y < piece.cells.length; y++) {
+    for (let x = 0; x < piece.cells[y].length; x++) {
+      if (piece.cells[y][x]) callback(piece.x + x, piece.y + y);
+    }
+  }
+}
+
+function endGame() {
+  running = false;
+  paused = false;
+  gameOver = true;
+  saveBestIfNeeded();
+  setMessage('Game over.');
+  updateLabels();
+}
+
+function saveBestIfNeeded() {
+  if (score <= best) return;
+  best = score;
+  localStorage.setItem(BEST_KEY, String(best));
+}
+
+function updateLabels() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('lines').textContent = lines;
+  document.getElementById('level').textContent = level;
+  document.getElementById('best').textContent = best;
+  document.getElementById('start-button').textContent = gameOver ? 'Retry' : running && !paused ? 'Pause' : 'Start';
+}
+
+function setMessage(text) {
+  document.getElementById('message').textContent = text;
+}
+
+function draw() {
+  ctx.fillStyle = '#0B0B0E';
+  ctx.fillRect(0, 0, COLS * CELL, ROWS * CELL);
+  drawGrid();
+  drawBoard();
+  drawPiece();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(255,255,255,.045)';
+  ctx.lineWidth = 1;
+  for (let x = 1; x < COLS; x++) {
+    ctx.beginPath();
+    ctx.moveTo(x * CELL, 0);
+    ctx.lineTo(x * CELL, ROWS * CELL);
+    ctx.stroke();
+  }
+  for (let y = 1; y < ROWS; y++) {
+    ctx.beginPath();
+    ctx.moveTo(0, y * CELL);
+    ctx.lineTo(COLS * CELL, y * CELL);
+    ctx.stroke();
+  }
+}
+
+function drawBoard() {
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = 0; x < COLS; x++) {
+      if (board[y][x]) drawCell(x, y, board[y][x]);
+    }
+  }
+}
+
+function drawPiece() {
+  if (!piece) return;
+  forEachPieceCell((x, y) => {
+    if (y >= 0) drawCell(x, y, piece.color);
+  });
+}
+
+function drawCell(x, y, color) {
+  const px = x * CELL;
+  const py = y * CELL;
+  ctx.fillStyle = color;
+  ctx.fillRect(px + 1, py + 1, CELL - 2, CELL - 2);
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.fillRect(px + 4, py + 4, CELL - 8, 4);
+  ctx.strokeStyle = 'rgba(0,0,0,.34)';
+  ctx.strokeRect(px + 1.5, py + 1.5, CELL - 3, CELL - 3);
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft') movePiece(-1);
+  if (event.key === 'ArrowRight') movePiece(1);
+  if (event.key === 'ArrowDown') softDrop();
+  if (event.key === 'ArrowUp') rotatePiece();
+  if (event.key === ' ') hardDrop();
+  if (event.key === 'Enter') startPause();
+  if (event.key.toLowerCase() === 'r') resetGame();
+});
+
+resetGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  Brick Breaker is a canvas game in one file.
+
+  The page is split the same way as the other apps:
+  - HTML creates the visible controls and panels.
+  - CSS makes the page responsive and touch friendly.
+  - JavaScript owns the game state, physics, drawing, and saved high score.
+
+  For a C++ reader: the JavaScript objects below are small structs, and the
+  animation function behaves like a simple game loop.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Brick Breaker">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Brick Breaker</title>
+<style>
+  :root {
+    --red: #E8173A;
+    --yellow: #F5C400;
+    --blue: #0057B8;
+    --green: #00964B;
+    --dark: #111114;
+    --panel: #1C1C21;
+    --border: rgba(255,255,255,.1);
+    --text: #F0EEE8;
+    --muted: rgba(240,238,232,.58);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at 12% 6%, rgba(0,87,184,.2), transparent 22rem),
+      radial-gradient(circle at 90% 8%, rgba(245,196,0,.15), transparent 20rem),
+      var(--dark);
+    color: var(--text);
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  button { font: inherit; }
+
+  main {
+    width: min(900px, 100%);
+    min-height: 100dvh;
+    margin: 0 auto;
+    padding: 16px 14px 34px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  h1 {
+    font-size: clamp(2rem, 7vw, 4rem);
+    line-height: .95;
+    letter-spacing: 0;
+  }
+
+  .back {
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 9px 12px;
+    background: rgba(255,255,255,.045);
+    white-space: nowrap;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)), var(--panel);
+    box-shadow: 0 16px 34px rgba(0,0,0,.22);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(190px, 230px);
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  .stage {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .hud {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .stat {
+    min-height: 62px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    padding: 10px;
+  }
+
+  .stat span {
+    display: block;
+    color: var(--muted);
+    font-size: .68rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .stat strong {
+    font-size: 1.35rem;
+    line-height: 1;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .canvas-frame {
+    width: min(100%, 480px);
+    aspect-ratio: 3 / 4;
+    margin: 0 auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #0B0B0E;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  .message {
+    min-height: 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
+  .controls {
+    padding: 12px;
+    display: grid;
+    gap: 12px;
+    align-content: center;
+  }
+
+  .button {
+    min-height: 56px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.13);
+    cursor: pointer;
+    color: var(--text);
+    font-weight: 950;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    background:
+      radial-gradient(circle at 35% 22%, rgba(255,255,255,.22), transparent 30%),
+      linear-gradient(160deg, #34343d, #18181f);
+    box-shadow:
+      inset 0 2px 2px rgba(255,255,255,.12),
+      inset 0 -5px 8px rgba(0,0,0,.34),
+      0 6px 0 #101015,
+      0 12px 18px rgba(0,0,0,.28);
+  }
+
+  .button.primary {
+    background:
+      radial-gradient(circle at 35% 22%, rgba(255,255,255,.34), transparent 30%),
+      linear-gradient(160deg, #ff5169, var(--red) 48%, #5e0714);
+    box-shadow:
+      inset 0 3px 3px rgba(255,255,255,.16),
+      inset 0 -8px 10px rgba(0,0,0,.34),
+      0 7px 0 #3c040d,
+      0 15px 22px rgba(0,0,0,.36);
+  }
+
+  .button:active {
+    transform: translateY(4px) scale(.985);
+    box-shadow:
+      inset 0 3px 7px rgba(0,0,0,.34),
+      inset 0 -3px 5px rgba(255,255,255,.06),
+      0 2px 0 #101015,
+      0 7px 12px rgba(0,0,0,.24);
+  }
+
+  @media (max-width: 760px) {
+    header { align-items: flex-start; flex-direction: column; }
+    .layout { grid-template-columns: 1fr; }
+    .hud { grid-template-columns: repeat(2, 1fr); }
+    .controls { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Brick Breaker</h1>
+    <a class="back" href="../index.html">App Shelf</a>
+  </header>
+
+  <section class="layout" aria-label="Brick Breaker game">
+    <section class="panel stage">
+      <div class="hud" aria-label="Game status">
+        <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+        <div class="stat"><span>Lives</span><strong id="lives">3</strong></div>
+        <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+        <div class="stat"><span>State</span><strong id="state">Ready</strong></div>
+      </div>
+
+      <div class="canvas-frame">
+        <canvas id="board" width="420" height="560" aria-label="Brick Breaker board"></canvas>
+      </div>
+
+      <div class="message" id="message">Ready.</div>
+    </section>
+
+    <section class="panel controls" aria-label="Game controls">
+      <button class="button primary" onclick="startPause()" id="start-button">Start</button>
+      <button class="button" onclick="resetGame()">Reset</button>
+    </section>
+  </section>
+</main>
+
+<script>
+/*
+  Game state.
+
+  The canvas is 420x560 internal pixels. CSS may stretch or shrink it on the
+  screen, but all physics uses the fixed internal coordinate system below.
+*/
+const WIDTH = 420;
+const HEIGHT = 560;
+const BEST_KEY = 'brick_breaker_best';
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+
+let paddle;
+let ball;
+let bricks = [];
+let score = 0;
+let lives = 3;
+let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
+let running = false;
+let paused = false;
+let gameOver = false;
+let frameId = 0;
+let lastTime = 0;
+
+function makePaddle() {
+  return { x: WIDTH / 2 - 44, y: HEIGHT - 42, w: 88, h: 14 };
+}
+
+function resetBall() {
+  const angle = Math.random() > .5 ? -0.65 : -2.49;
+  ball = {
+    x: paddle.x + paddle.w / 2,
+    y: paddle.y - 12,
+    r: 8,
+    speed: 260,
+    vx: Math.cos(angle) * 260,
+    vy: Math.sin(angle) * 260
+  };
+}
+
+function buildBricks() {
+  const rows = 5;
+  const cols = 7;
+  const gap = 6;
+  const left = 26;
+  const top = 54;
+  const brickW = (WIDTH - left * 2 - gap * (cols - 1)) / cols;
+  const brickH = 24;
+  const colors = ['#E8173A', '#F5C400', '#0057B8', '#00964B', '#F05A28'];
+  bricks = [];
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      bricks.push({
+        x: left + col * (brickW + gap),
+        y: top + row * (brickH + gap),
+        w: brickW,
+        h: brickH,
+        color: colors[row],
+        alive: true
+      });
+    }
+  }
+}
+
+function resetGame() {
+  cancelAnimationFrame(frameId);
+  paddle = makePaddle();
+  buildBricks();
+  resetBall();
+  score = 0;
+  lives = 3;
+  running = false;
+  paused = false;
+  gameOver = false;
+  lastTime = 0;
+  setMessage('Ready.');
+  updateLabels();
+  draw();
+}
+
+function startPause() {
+  if (gameOver) resetGame();
+
+  if (!running) {
+    running = true;
+    paused = false;
+    setMessage('');
+    lastTime = 0;
+    frameId = requestAnimationFrame(loop);
+  } else {
+    paused = !paused;
+    setMessage(paused ? 'Paused.' : '');
+    if (!paused) {
+      lastTime = 0;
+      frameId = requestAnimationFrame(loop);
+    }
+  }
+
+  updateLabels();
+}
+
+function loop(timestamp) {
+  if (!running || paused || gameOver) return;
+
+  if (!lastTime) lastTime = timestamp;
+  const dt = Math.min(0.025, (timestamp - lastTime) / 1000);
+  lastTime = timestamp;
+
+  update(dt);
+  draw();
+  frameId = requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+
+  if (ball.x - ball.r < 0) {
+    ball.x = ball.r;
+    ball.vx = Math.abs(ball.vx);
+  }
+
+  if (ball.x + ball.r > WIDTH) {
+    ball.x = WIDTH - ball.r;
+    ball.vx = -Math.abs(ball.vx);
+  }
+
+  if (ball.y - ball.r < 0) {
+    ball.y = ball.r;
+    ball.vy = Math.abs(ball.vy);
+  }
+
+  if (ball.y - ball.r > HEIGHT) {
+    loseLife();
+    return;
+  }
+
+  bounceOffPaddle();
+  bounceOffBricks();
+}
+
+function bounceOffPaddle() {
+  const insideX = ball.x + ball.r >= paddle.x && ball.x - ball.r <= paddle.x + paddle.w;
+  const insideY = ball.y + ball.r >= paddle.y && ball.y - ball.r <= paddle.y + paddle.h;
+  if (!insideX || !insideY || ball.vy <= 0) return;
+
+  const center = paddle.x + paddle.w / 2;
+  const offset = (ball.x - center) / (paddle.w / 2);
+  const speed = Math.min(420, Math.hypot(ball.vx, ball.vy) + 4);
+  ball.vx = offset * speed * .86;
+  ball.vy = -Math.sqrt(Math.max(0, speed * speed - ball.vx * ball.vx));
+  ball.y = paddle.y - ball.r - 1;
+}
+
+function bounceOffBricks() {
+  for (const brick of bricks) {
+    if (!brick.alive) continue;
+
+    const hit = ball.x + ball.r >= brick.x &&
+      ball.x - ball.r <= brick.x + brick.w &&
+      ball.y + ball.r >= brick.y &&
+      ball.y - ball.r <= brick.y + brick.h;
+
+    if (!hit) continue;
+
+    brick.alive = false;
+    score += 10;
+    saveBestIfNeeded();
+    ball.vy *= -1;
+    updateLabels();
+
+    if (bricks.every(item => !item.alive)) {
+      score += 50;
+      saveBestIfNeeded();
+      buildBricks();
+      resetBall();
+      running = false;
+      setMessage('Wall clear.');
+      updateLabels();
+    }
+    return;
+  }
+}
+
+function loseLife() {
+  lives--;
+  if (lives <= 0) {
+    endGame();
+    return;
+  }
+
+  running = false;
+  paused = false;
+  resetBall();
+  setMessage('Ready.');
+  updateLabels();
+}
+
+function endGame() {
+  running = false;
+  paused = false;
+  gameOver = true;
+  saveBestIfNeeded();
+  setMessage('Game over.');
+  updateLabels();
+}
+
+function saveBestIfNeeded() {
+  if (score <= best) return;
+  best = score;
+  localStorage.setItem(BEST_KEY, String(best));
+}
+
+function updateLabels() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('lives').textContent = lives;
+  document.getElementById('best').textContent = best;
+  document.getElementById('state').textContent = gameOver ? 'Over' : paused ? 'Pause' : running ? 'Play' : 'Ready';
+  document.getElementById('start-button').textContent = gameOver ? 'Retry' : running && !paused ? 'Pause' : 'Start';
+}
+
+function setMessage(text) {
+  document.getElementById('message').textContent = text;
+}
+
+function draw() {
+  ctx.fillStyle = '#0B0B0E';
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  drawBackgroundGrid();
+  bricks.forEach(drawBrick);
+  drawPaddle();
+  drawBall();
+}
+
+function drawBackgroundGrid() {
+  ctx.strokeStyle = 'rgba(255,255,255,.035)';
+  ctx.lineWidth = 1;
+  for (let x = 30; x < WIDTH; x += 30) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, HEIGHT);
+    ctx.stroke();
+  }
+  for (let y = 30; y < HEIGHT; y += 30) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(WIDTH, y);
+    ctx.stroke();
+  }
+}
+
+function drawBrick(brick) {
+  if (!brick.alive) return;
+  ctx.fillStyle = brick.color;
+  ctx.fillRect(brick.x, brick.y, brick.w, brick.h);
+  ctx.fillStyle = 'rgba(255,255,255,.22)';
+  ctx.fillRect(brick.x + 3, brick.y + 3, brick.w - 6, 5);
+  ctx.strokeStyle = 'rgba(0,0,0,.35)';
+  ctx.strokeRect(brick.x + .5, brick.y + .5, brick.w - 1, brick.h - 1);
+}
+
+function drawPaddle() {
+  const gradient = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
+  gradient.addColorStop(0, '#1683ee');
+  gradient.addColorStop(.55, '#0057B8');
+  gradient.addColorStop(1, '#032349');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
+  ctx.fillStyle = 'rgba(255,255,255,.24)';
+  ctx.fillRect(paddle.x + 5, paddle.y + 3, paddle.w - 10, 3);
+}
+
+function drawBall() {
+  ctx.fillStyle = '#F5C400';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.34)';
+  ctx.beginPath();
+  ctx.arc(ball.x - 3, ball.y - 3, ball.r * .32, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function setPaddleFromClientX(clientX) {
+  const rect = canvas.getBoundingClientRect();
+  const x = (clientX - rect.left) * WIDTH / rect.width;
+  paddle.x = Math.max(0, Math.min(WIDTH - paddle.w, x - paddle.w / 2));
+  if (!running) {
+    ball.x = paddle.x + paddle.w / 2;
+    ball.y = paddle.y - 12;
+  }
+  draw();
+}
+
+canvas.addEventListener('pointerdown', event => {
+  setPaddleFromClientX(event.clientX);
+});
+
+canvas.addEventListener('pointermove', event => {
+  setPaddleFromClientX(event.clientX);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'ArrowLeft') {
+    paddle.x = Math.max(0, paddle.x - 24);
+    if (!running) resetBall();
+    draw();
+  }
+  if (event.key === 'ArrowRight') {
+    paddle.x = Math.min(WIDTH - paddle.w, paddle.x + 24);
+    if (!running) resetBall();
+    draw();
+  }
+  if (event.key === ' ' || event.key === 'Enter') startPause();
+  if (event.key.toLowerCase() === 'r') resetGame();
+});
+
+resetGame();
+</script>
+</body>
+</html>

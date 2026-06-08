@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Minesweeper uses a 2D array of cells. Each cell stores mine/revealed/flagged/count. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mines">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Minesweeper</title>
+<style>
+  :root { --dark:#111114; --panel:#1C1C21; --border:rgba(255,255,255,.1); --text:#F0EEE8; --muted:rgba(240,238,232,.58); --red:#E8173A; --yellow:#F5C400; --blue:#0057B8; --green:#00964B; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { min-height:100dvh; background:radial-gradient(circle at 18% 0%, rgba(0,150,75,.18), transparent 22rem), var(--dark); color:var(--text); font-family:ui-rounded,"Avenir Next","Segoe UI",system-ui,sans-serif; }
+  main { width:min(720px,100%); margin:0 auto; padding:16px 14px 36px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+  h1 { font-size:clamp(2rem,7vw,4rem); line-height:.95; }
+  a, button { color:var(--text); text-decoration:none; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.06); padding:10px 12px; font:inherit; cursor:pointer; }
+  .panel { border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),var(--panel); box-shadow:0 16px 34px rgba(0,0,0,.22); padding:10px; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .stat { min-height:62px; padding:10px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.04); }
+  .stat span { display:block; color:var(--muted); font-size:.72rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
+  .stat strong { font-size:1.45rem; font-variant-numeric:tabular-nums; }
+  .grid { display:grid; grid-template-columns:repeat(9,1fr); gap:4px; }
+  .cell { aspect-ratio:1; border:0; border-radius:7px; background:#24242B; color:#fff; display:grid; place-items:center; font-weight:950; padding:0; }
+  .cell.revealed { background:#101014; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); }
+  .cell.flagged { color:var(--yellow); }
+  .cell.mine { background:var(--red); }
+  .controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .primary { background:linear-gradient(135deg,var(--red),#8e1022); border:0; font-weight:950; text-transform:uppercase; }
+  .mode.active { background:linear-gradient(135deg,var(--blue),#003b83); }
+  .message { text-align:center; color:var(--muted); min-height:24px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Minesweeper</h1><a href="../index.html">App Shelf</a></header>
+  <section class="stats"><div class="stat"><span>Mines</span><strong id="mines">10</strong></div><div class="stat"><span>Flags</span><strong id="flags">0</strong></div><div class="stat"><span>Mode</span><strong id="mode">Dig</strong></div></section>
+  <section class="panel"><div class="grid" id="grid"></div></section>
+  <div class="controls"><button class="primary" onclick="newGame()">New Game</button><button class="mode" id="mode-button" onclick="toggleMode()">Flag Mode</button></div>
+  <div class="message" id="message">Tap safe squares. Use flag mode for mines.</div>
+</main>
+<script>
+const SIZE = 9, MINE_COUNT = 10;
+let grid = [];
+let flagMode = false;
+let gameOver = false;
+
+function newGame() {
+  grid = Array.from({ length: SIZE }, (_, y) => Array.from({ length: SIZE }, (_, x) => ({ x, y, mine:false, revealed:false, flagged:false, count:0 })));
+  let placed = 0;
+  while (placed < MINE_COUNT) {
+    const x = Math.floor(Math.random() * SIZE), y = Math.floor(Math.random() * SIZE);
+    if (!grid[y][x].mine) { grid[y][x].mine = true; placed++; }
+  }
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) grid[y][x].count = neighbors(x,y).filter(c => c.mine).length;
+  flagMode = false;
+  gameOver = false;
+  setMessage('Tap safe squares. Use flag mode for mines.');
+  render();
+}
+function neighbors(x,y) {
+  const out = [];
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    if (!dx && !dy) continue;
+    const nx = x + dx, ny = y + dy;
+    if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) out.push(grid[ny][nx]);
+  }
+  return out;
+}
+function tapCell(x,y) {
+  if (gameOver) return;
+  const cell = grid[y][x];
+  if (flagMode) {
+    if (!cell.revealed) cell.flagged = !cell.flagged;
+  } else {
+    reveal(cell);
+  }
+  checkWin();
+  render();
+}
+function reveal(cell) {
+  if (cell.revealed || cell.flagged) return;
+  cell.revealed = true;
+  if (cell.mine) { gameOver = true; revealAll(); setMessage('Boom. Try again.'); return; }
+  if (!cell.count) neighbors(cell.x, cell.y).forEach(reveal);
+}
+function revealAll() { grid.flat().forEach(c => c.revealed = true); }
+function checkWin() {
+  if (gameOver) return;
+  const safeLeft = grid.flat().filter(c => !c.mine && !c.revealed).length;
+  if (!safeLeft) { gameOver = true; setMessage('Cleared. Nice sweep.'); revealAll(); }
+}
+function toggleMode() { flagMode = !flagMode; render(); }
+function render() {
+  document.getElementById('grid').innerHTML = grid.flat().map(c => {
+    const text = c.revealed ? (c.mine ? '*' : (c.count || '')) : (c.flagged ? 'F' : '');
+    return `<button class="cell ${c.revealed ? 'revealed' : ''} ${c.flagged ? 'flagged' : ''} ${c.revealed && c.mine ? 'mine' : ''}" onclick="tapCell(${c.x},${c.y})">${text}</button>`;
+  }).join('');
+  const flags = grid.flat().filter(c => c.flagged).length;
+  document.getElementById('flags').textContent = flags;
+  document.getElementById('mines').textContent = MINE_COUNT;
+  document.getElementById('mode').textContent = flagMode ? 'Flag' : 'Dig';
+  document.getElementById('mode-button').classList.toggle('active', flagMode);
+}
+function setMessage(text) { document.getElementById('message').textContent = text; }
+newGame();
+</script>
+</body>
+</html>

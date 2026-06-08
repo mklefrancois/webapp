@@ -193,6 +193,45 @@
     box-shadow: 0 0 18px rgba(245,196,0,.65);
   }
 
+  /*
+    Generic CSS-only icons for the new game pack. The text is large enough to
+    read on iPad, and each variant only changes the background/accent.
+  */
+  .text-icon {
+    display: grid;
+    place-items: center;
+    background: #121217;
+    color: #fff;
+    font-size: 1.2rem;
+    font-weight: 950;
+    letter-spacing: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .text-icon::after {
+    content: "";
+    position: absolute;
+    inset: auto -10px -14px;
+    height: 32px;
+    background: var(--icon-accent, var(--green));
+    transform: rotate(-8deg);
+  }
+
+  .text-icon span {
+    position: relative;
+    z-index: 1;
+  }
+
+  .merge-icon { --icon-accent: var(--yellow); }
+  .memory-icon { --icon-accent: var(--red); }
+  .tower-icon { --icon-accent: var(--blue); }
+  .mine-icon { --icon-accent: var(--green); }
+  .brick-icon { --icon-accent: var(--yellow); }
+  .word-icon { --icon-accent: var(--blue); }
+  .sudoku-icon { --icon-accent: var(--red); }
+  .blocks-icon { --icon-accent: var(--green); }
+
   .arrow {
     width: 38px;
     height: 38px;
@@ -300,6 +339,126 @@
       <div class="card-meta">
         <span class="pill">Game</span>
         <span class="pill">D-pad</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/number-merge.html">
+      <div class="card-top">
+        <div class="app-icon text-icon merge-icon" aria-hidden="true"><span>2048</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Number Merge</h2>
+        <p>Slide tiles, merge numbers, chase a bigger score.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">Swipe</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/memory-match.html">
+      <div class="card-top">
+        <div class="app-icon text-icon memory-icon" aria-hidden="true"><span>MEM</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Memory Match</h2>
+        <p>Flip cards and clear every pair with fewer moves.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">Cards</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/tower-stack.html">
+      <div class="card-top">
+        <div class="app-icon text-icon tower-icon" aria-hidden="true"><span>STACK</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Tower Stack</h2>
+        <p>Drop moving blocks and build the tallest tower.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">Tap</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/minesweeper.html">
+      <div class="card-top">
+        <div class="app-icon text-icon mine-icon" aria-hidden="true"><span>MINE</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Minesweeper</h2>
+        <p>Reveal safe squares and flag the hidden mines.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Puzzle</span>
+        <span class="pill">Classic</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/brick-breaker.html">
+      <div class="card-top">
+        <div class="app-icon text-icon brick-icon" aria-hidden="true"><span>BRK</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Brick Breaker</h2>
+        <p>Drag the paddle and clear the wall of bricks.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">Canvas</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/word-puzzle.html">
+      <div class="card-top">
+        <div class="app-icon text-icon word-icon" aria-hidden="true"><span>WORD</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Word Puzzle</h2>
+        <p>Guess five-letter words in English, French, German, or Spanish.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Puzzle</span>
+        <span class="pill">4 languages</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/sudoku.html">
+      <div class="card-top">
+        <div class="app-icon text-icon sudoku-icon" aria-hidden="true"><span>9x9</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Sudoku</h2>
+        <p>Fill the grid and check the solution when ready.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Puzzle</span>
+        <span class="pill">Calm</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/falling-blocks.html">
+      <div class="card-top">
+        <div class="app-icon text-icon blocks-icon" aria-hidden="true"><span>FALL</span></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Falling Blocks</h2>
+        <p>Rotate and place falling pieces to clear lines.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">Arcade</span>
       </div>
     </a>
   </section>

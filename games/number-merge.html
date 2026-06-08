@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!--
+  Number Merge is a 2048-style game.
+  The state is a 4x4 array of numbers. A move transforms the array, then render()
+  redraws the visible grid. This is a compact example of state-driven UI.
+-->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Merge">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Number Merge</title>
+<style>
+  :root { --dark:#111114; --panel:#1C1C21; --border:rgba(255,255,255,.1); --text:#F0EEE8; --muted:rgba(240,238,232,.58); --yellow:#F5C400; --red:#E8173A; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { min-height:100dvh; background:radial-gradient(circle at 15% 0%, rgba(245,196,0,.18), transparent 22rem), var(--dark); color:var(--text); font-family:ui-rounded,"Avenir Next","Segoe UI",system-ui,sans-serif; }
+  main { width:min(680px,100%); margin:0 auto; padding:16px 14px 36px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+  h1 { font-size:clamp(2rem,7vw,4rem); line-height:.95; }
+  .back, button { border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.06); color:var(--text); padding:10px 12px; font:inherit; text-decoration:none; cursor:pointer; }
+  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px; }
+  .stat, .panel { border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),var(--panel); box-shadow:0 16px 34px rgba(0,0,0,.22); }
+  .stat { padding:11px; min-height:64px; }
+  .stat span { display:block; color:var(--muted); font-size:.72rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; margin-bottom:5px; }
+  .stat strong { font-size:1.6rem; font-variant-numeric:tabular-nums; }
+  .board { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; padding:10px; touch-action:none; }
+  .tile { aspect-ratio:1; display:grid; place-items:center; border-radius:10px; background:#24242B; color:#fff; font-size:clamp(1.4rem,8vw,2.5rem); font-weight:950; box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+  .tile[data-v="0"] { color:transparent; background:rgba(255,255,255,.045); box-shadow:none; }
+  .tile[data-v="2"] { background:#324b73; } .tile[data-v="4"] { background:#0057B8; } .tile[data-v="8"] { background:#00964B; }
+  .tile[data-v="16"] { background:#987900; } .tile[data-v="32"] { background:#F5C400; color:#161616; }
+  .tile[data-v="64"] { background:#E8173A; } .tile[data-v="128"], .tile[data-v="256"], .tile[data-v="512"] { background:#9220a8; }
+  .tile[data-v="1024"], .tile[data-v="2048"] { background:#fff; color:#111114; }
+  .controls { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:14px; }
+  .primary { background:linear-gradient(135deg,var(--red),#9b1024); border:0; font-weight:950; text-transform:uppercase; }
+  .message { color:var(--muted); text-align:center; min-height:24px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Number Merge</h1><a class="back" href="../index.html">App Shelf</a></header>
+  <section class="stats">
+    <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+    <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+    <div class="stat"><span>Top</span><strong id="top">0</strong></div>
+  </section>
+  <section class="panel board" id="board" aria-label="Number grid"></section>
+  <div class="controls"><button class="primary" onclick="newGame()">New Game</button><button onclick="undo()">Undo</button></div>
+  <div class="message" id="message">Swipe or use arrow keys.</div>
+</main>
+<script>
+const SIZE = 4;
+const BEST_KEY = 'merge_best';
+let grid = [];
+let previous = null;
+let score = 0;
+let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
+let touchStart = null;
+
+function emptyGrid() { return Array.from({ length: SIZE }, () => Array(SIZE).fill(0)); }
+function cloneGrid(src) { return src.map(row => row.slice()); }
+function randomEmptyCell() {
+  const cells = [];
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) if (!grid[y][x]) cells.push({x,y});
+  return cells[Math.floor(Math.random() * cells.length)];
+}
+function addTile() {
+  const cell = randomEmptyCell();
+  if (cell) grid[cell.y][cell.x] = Math.random() < .9 ? 2 : 4;
+}
+function newGame() {
+  grid = emptyGrid();
+  score = 0;
+  previous = null;
+  addTile(); addTile();
+  render();
+  setMessage('Swipe or use arrow keys.');
+}
+function lineMove(line) {
+  const values = line.filter(Boolean);
+  const out = [];
+  for (let i = 0; i < values.length; i++) {
+    if (values[i] === values[i + 1]) {
+      const merged = values[i] * 2;
+      out.push(merged);
+      score += merged;
+      i++;
+    } else {
+      out.push(values[i]);
+    }
+  }
+  while (out.length < SIZE) out.push(0);
+  return out;
+}
+function move(dir) {
+  previous = { grid: cloneGrid(grid), score };
+  const before = JSON.stringify(grid);
+  for (let i = 0; i < SIZE; i++) {
+    let line = [];
+    for (let j = 0; j < SIZE; j++) {
+      const x = dir === 'left' || dir === 'right' ? j : i;
+      const y = dir === 'left' || dir === 'right' ? i : j;
+      line.push(grid[y][x]);
+    }
+    if (dir === 'right' || dir === 'down') line.reverse();
+    line = lineMove(line);
+    if (dir === 'right' || dir === 'down') line.reverse();
+    for (let j = 0; j < SIZE; j++) {
+      const x = dir === 'left' || dir === 'right' ? j : i;
+      const y = dir === 'left' || dir === 'right' ? i : j;
+      grid[y][x] = line[j];
+    }
+  }
+  if (JSON.stringify(grid) !== before) {
+    addTile();
+    if (score > best) { best = score; localStorage.setItem(BEST_KEY, String(best)); }
+    render();
+    if (!canMove()) setMessage('No moves left.');
+  } else {
+    previous = null;
+  }
+}
+function canMove() {
+  for (let y = 0; y < SIZE; y++) for (let x = 0; x < SIZE; x++) {
+    if (!grid[y][x]) return true;
+    if (x + 1 < SIZE && grid[y][x] === grid[y][x + 1]) return true;
+    if (y + 1 < SIZE && grid[y][x] === grid[y + 1][x]) return true;
+  }
+  return false;
+}
+function undo() {
+  if (!previous) return;
+  grid = previous.grid;
+  score = previous.score;
+  previous = null;
+  render();
+  setMessage('Move undone.');
+}
+function render() {
+  const board = document.getElementById('board');
+  board.innerHTML = grid.flat().map(v => `<div class="tile" data-v="${v}">${v || ''}</div>`).join('');
+  document.getElementById('score').textContent = score;
+  document.getElementById('best').textContent = best;
+  document.getElementById('top').textContent = Math.max(...grid.flat());
+}
+function setMessage(text) { document.getElementById('message').textContent = text; }
+document.addEventListener('keydown', e => {
+  const map = { ArrowLeft:'left', ArrowRight:'right', ArrowUp:'up', ArrowDown:'down' };
+  if (map[e.key]) move(map[e.key]);
+});
+const board = document.getElementById('board');
+board.addEventListener('touchstart', e => { const t = e.touches[0]; touchStart = {x:t.clientX,y:t.clientY}; e.preventDefault(); }, {passive:false});
+board.addEventListener('touchmove', e => e.preventDefault(), {passive:false});
+board.addEventListener('touchend', e => {
+  if (!touchStart || !e.changedTouches.length) return;
+  const t = e.changedTouches[0], dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+  touchStart = null;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'));
+  e.preventDefault();
+}, {passive:false});
+newGame();
+</script>
+</body>
+</html>

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Multilingual word puzzle. Accents are displayed, but plain input can match them. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Words">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Word Puzzle</title>
+<style>
+  :root { --dark:#111114; --panel:#1C1C21; --border:rgba(255,255,255,.1); --text:#F0EEE8; --muted:rgba(240,238,232,.58); --red:#E8173A; --yellow:#F5C400; --blue:#0057B8; --green:#00964B; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { min-height:100dvh; background:radial-gradient(circle at 85% 0%, rgba(0,87,184,.18), transparent 22rem), var(--dark); color:var(--text); font-family:ui-rounded,"Avenir Next","Segoe UI",system-ui,sans-serif; }
+  main { width:min(680px,100%); margin:0 auto; padding:16px 14px 36px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+  h1 { font-size:clamp(2rem,7vw,4rem); line-height:.95; }
+  a, button, select, input { color:var(--text); border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.06); padding:10px 12px; font:inherit; }
+  a { text-decoration:none; }
+  button { cursor:pointer; }
+  .panel { border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),var(--panel); box-shadow:0 16px 34px rgba(0,0,0,.22); padding:12px; margin-bottom:14px; }
+  .top { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid { display:grid; grid-template-rows:repeat(6,1fr); gap:8px; }
+  .row { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+  .cell { aspect-ratio:1; border-radius:9px; border:1px solid var(--border); display:grid; place-items:center; font-size:clamp(1.4rem,8vw,2.2rem); font-weight:950; background:#24242B; text-transform:uppercase; }
+  .hit { background:var(--green); } .near { background:#987900; } .miss { background:#3b3b43; color:var(--muted); }
+  .entry { display:grid; grid-template-columns:1fr auto; gap:10px; margin-top:12px; }
+  .primary { background:linear-gradient(135deg,var(--red),#8e1022); border:0; font-weight:950; text-transform:uppercase; }
+  .message { color:var(--muted); text-align:center; min-height:24px; margin-top:10px; }
+  @media (max-width:520px){ .top,.entry{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Word Puzzle</h1><a href="../index.html">App Shelf</a></header>
+  <section class="panel top"><select id="language" onchange="newGame()"><option value="en">English</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="es">Español</option></select><button onclick="newGame()">New Word</button></section>
+  <section class="panel"><div class="grid" id="grid"></div><div class="entry"><input id="guess" maxlength="5" autocomplete="off" autocapitalize="characters" placeholder="5 letters"><button class="primary" onclick="submitGuess()">Guess</button></div><div class="message" id="message">Choose a language and guess.</div></section>
+</main>
+<script>
+const WORDS = {
+  en: ['APPLE','GRAPE','PLANT','SNAKE','BRICK','CHAIR','WATER','LIGHT','HOUSE','MUSIC'],
+  fr: ['TABLE','CHIEN','POMME','ÉCOLE','LIVRE','VERRE','MONDE','FLEUR','ROUTE','PLAGE'],
+  de: ['APFEL','BLUME','SCHUH','STUHL','STERN','WOLKE','KATZE','MAUER','LICHT','MÜNZE'],
+  es: ['PERRO','GATOS','PLAYA','NIÑOS','ÁRBOL','LIBRO','DULCE','VERDE','NOCHE','RUTAS']
+};
+let answer = '';
+let answerDisplay = '';
+let guesses = [];
+let over = false;
+
+function normalizeWord(text) {
+  return text.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
+}
+function newGame() {
+  const lang = document.getElementById('language').value;
+  const i = Math.floor(Math.random() * WORDS[lang].length);
+  answer = normalizeWord(WORDS[lang][i]).slice(0,5);
+  answerDisplay = WORDS[lang][i];
+  guesses = [];
+  over = false;
+  document.getElementById('guess').value = '';
+  setMessage('Guess a five-letter word.');
+  render();
+}
+function scoreGuess(word) {
+  const result = Array(5).fill('miss');
+  const counts = {};
+  for (let i = 0; i < 5; i++) {
+    if (word[i] === answer[i]) result[i] = 'hit';
+    else counts[answer[i]] = (counts[answer[i]] || 0) + 1;
+  }
+  for (let i = 0; i < 5; i++) {
+    if (result[i] === 'hit') continue;
+    if (counts[word[i]]) { result[i] = 'near'; counts[word[i]]--; }
+  }
+  return result;
+}
+function submitGuess() {
+  if (over) return;
+  const word = normalizeWord(document.getElementById('guess').value).slice(0,5);
+  if (word.length !== 5) { setMessage('Enter exactly five letters.'); return; }
+  guesses.push({ word, score: scoreGuess(word) });
+  document.getElementById('guess').value = '';
+  if (word === answer) { over = true; setMessage('Correct: ' + answerDisplay); }
+  else if (guesses.length >= 6) { over = true; setMessage('Answer: ' + answerDisplay); }
+  else setMessage((6 - guesses.length) + ' guesses left.');
+  render();
+}
+function render() {
+  const rows = [];
+  for (let r = 0; r < 6; r++) {
+    const guess = guesses[r];
+    rows.push('<div class="row">' + Array.from({length:5}, (_, i) => {
+      const letter = guess ? guess.word[i] : '';
+      const cls = guess ? guess.score[i] : '';
+      return `<div class="cell ${cls}">${letter}</div>`;
+    }).join('') + '</div>');
+  }
+  document.getElementById('grid').innerHTML = rows.join('');
+}
+function setMessage(text) { document.getElementById('message').textContent = text; }
+document.getElementById('guess').addEventListener('keydown', e => { if (e.key === 'Enter') submitGuess(); });
+newGame();
+</script>
+</body>
+</html>

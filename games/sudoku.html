@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Sudoku uses one built-in puzzle and solution. This can grow into a puzzle bank later. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sudoku">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../images/hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../images/hub-favicon.png?v=1">
+<title>Sudoku</title>
+<style>
+  :root { --dark:#111114; --panel:#1C1C21; --border:rgba(255,255,255,.1); --text:#F0EEE8; --muted:rgba(240,238,232,.58); --red:#E8173A; --yellow:#F5C400; --blue:#0057B8; }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { min-height:100dvh; background:radial-gradient(circle at 18% 0%, rgba(232,23,58,.16), transparent 22rem), var(--dark); color:var(--text); font-family:ui-rounded,"Avenir Next","Segoe UI",system-ui,sans-serif; }
+  main { width:min(720px,100%); margin:0 auto; padding:16px 14px 36px; }
+  header { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:14px; }
+  h1 { font-size:clamp(2rem,7vw,4rem); line-height:.95; }
+  a, button { color:var(--text); text-decoration:none; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,.06); padding:10px 12px; font:inherit; cursor:pointer; }
+  .panel { border:1px solid var(--border); border-radius:12px; background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)),var(--panel); box-shadow:0 16px 34px rgba(0,0,0,.22); padding:10px; }
+  .grid { display:grid; grid-template-columns:repeat(9,1fr); border:2px solid rgba(255,255,255,.3); }
+  input { width:100%; aspect-ratio:1; border:1px solid rgba(255,255,255,.08); background:#101014; color:var(--text); text-align:center; font-size:clamp(1rem,6vw,2rem); font-weight:900; outline:none; }
+  input.given { color:var(--yellow); background:#24242B; }
+  input.bad { background:rgba(232,23,58,.28); }
+  input:nth-child(3n) { border-right-color:rgba(255,255,255,.3); } input:nth-child(n+19):nth-child(-n+27), input:nth-child(n+46):nth-child(-n+54) { border-bottom-color:rgba(255,255,255,.3); }
+  .controls { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+  .primary { background:linear-gradient(135deg,var(--red),#8e1022); border:0; font-weight:950; text-transform:uppercase; }
+  .message { color:var(--muted); text-align:center; min-height:24px; margin-top:10px; }
+</style>
+</head>
+<body>
+<main>
+  <header><h1>Sudoku</h1><a href="../index.html">App Shelf</a></header>
+  <section class="panel"><div class="grid" id="grid"></div></section>
+  <div class="controls"><button class="primary" onclick="checkGrid()">Check</button><button onclick="clearGrid()">Clear</button><button onclick="solveGrid()">Solve</button></div>
+  <div class="message" id="message">Fill empty squares from 1 to 9.</div>
+</main>
+<script>
+const PUZZLE = '530070000600195000098000060800060003400803001700020006060000280000419005000080079';
+const SOLUTION = '534678912672195348198342567859761423426853791713924856961537284287419635345286179';
+function render() {
+  document.getElementById('grid').innerHTML = PUZZLE.split('').map((n, i) => {
+    const given = n !== '0';
+    return `<input inputmode="numeric" maxlength="1" data-i="${i}" class="${given ? 'given' : ''}" value="${given ? n : ''}" ${given ? 'readonly' : ''} oninput="cleanInput(this)">`;
+  }).join('');
+}
+function cleanInput(input) {
+  input.value = input.value.replace(/[^1-9]/g, '').slice(0,1);
+  input.classList.remove('bad');
+}
+function checkGrid() {
+  let complete = true, ok = true;
+  document.querySelectorAll('input').forEach(input => {
+    const i = Number(input.dataset.i);
+    input.classList.remove('bad');
+    if (!input.value) complete = false;
+    else if (input.value !== SOLUTION[i]) { input.classList.add('bad'); ok = false; }
+  });
+  setMessage(ok && complete ? 'Solved.' : ok ? 'So far so good.' : 'Some numbers are wrong.');
+}
+function clearGrid() {
+  document.querySelectorAll('input:not(.given)').forEach(input => { input.value = ''; input.classList.remove('bad'); });
+  setMessage('Cleared.');
+}
+function solveGrid() {
+  document.querySelectorAll('input').forEach(input => input.value = SOLUTION[Number(input.dataset.i)]);
+  setMessage('Solution shown.');
+}
+function setMessage(text) { document.getElementById('message').textContent = text; }
+render();
+</script>
+</body>
+</html>
