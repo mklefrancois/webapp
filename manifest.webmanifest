@@ -1,0 +1,23 @@
+{
+  "name": "UNO Tracker",
+  "short_name": "UNO",
+  "description": "A small winner-based UNO score tracker.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111114",
+  "theme_color": "#E8173A",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
