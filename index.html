@@ -158,6 +158,41 @@
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);
   }
 
+  /* The Snake icon is also CSS-only: a green loop plus a yellow food dot. */
+  .snake-icon {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(rgba(255,255,255,.04), rgba(255,255,255,0)),
+      #121217;
+  }
+
+  .snake-icon::before {
+    content: "";
+    position: absolute;
+    left: 14px;
+    top: 16px;
+    width: 44px;
+    height: 44px;
+    border: 9px solid var(--green);
+    border-left-color: transparent;
+    border-bottom-color: transparent;
+    border-radius: 15px;
+    transform: rotate(45deg);
+  }
+
+  .snake-icon::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    bottom: 14px;
+    width: 13px;
+    height: 13px;
+    border-radius: 999px;
+    background: var(--yellow);
+    box-shadow: 0 0 18px rgba(245,196,0,.65);
+  }
+
   .arrow {
     width: 38px;
     height: 38px;
@@ -250,6 +285,21 @@
       <div class="card-meta">
         <span class="pill">Game</span>
         <span class="pill">Touch</span>
+      </div>
+    </a>
+
+    <a class="app-card" href="games/snake.html">
+      <div class="card-top">
+        <div class="app-icon snake-icon" aria-hidden="true"></div>
+        <div class="arrow">></div>
+      </div>
+      <div>
+        <h2>Snake</h2>
+        <p>Classic grid snake with handheld-style touch controls.</p>
+      </div>
+      <div class="card-meta">
+        <span class="pill">Game</span>
+        <span class="pill">D-pad</span>
       </div>
     </a>
   </section>
