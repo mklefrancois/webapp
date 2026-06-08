@@ -1,6 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!--
+  index.html is the "app shelf" page.
+
+  A single HTML file can contain:
+  1. <head> metadata: browser/iPad settings, icons, page title.
+  2. <style> CSS: visual rules, similar to a style/theme layer in a UI toolkit.
+  3. <body> HTML: the actual visible structure.
+
+  This page deliberately has no JavaScript because it only links to apps/games.
+-->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,6 +21,11 @@
 <link rel="manifest" href="manifest.webmanifest?v=3">
 <title>iPad Apps</title>
 <style>
+  /*
+    CSS custom properties are variables.
+    In C++ terms, think of these as named constants for the theme.
+    Example: var(--red) below expands to #E8173A.
+  */
   :root {
     --red: #E8173A;
     --yellow: #F5C400;
@@ -23,8 +38,14 @@
     --muted: rgba(240,238,232,0.58);
   }
 
+  /*
+    A small reset. Browsers add default margins/padding; clearing them makes
+    layout predictable. box-sizing:border-box means width includes padding,
+    which is usually easier to reason about.
+  */
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
+  /* Page-level styling: background, text color, and the default font. */
   body {
     min-height: 100dvh;
     background:
@@ -35,12 +56,18 @@
     font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
   }
 
+  /*
+    main is the centered content container.
+    width:min(980px, 100%) means "use 980px on large screens, but never
+    exceed the screen width." This is why it works on both desktop and iPad.
+  */
   main {
     width: min(980px, 100%);
     margin: 0 auto;
     padding: 22px 16px 44px;
   }
 
+  /* Top row of the shelf: title on the left, GitHub Pages badge on the right. */
   header {
     display: flex;
     align-items: end;
@@ -49,12 +76,17 @@
     margin-bottom: 18px;
   }
 
+  /*
+    clamp(min, preferred, max) lets the title scale without becoming tiny
+    or absurdly large. This is a good responsive CSS pattern.
+  */
   h1 {
     font-size: clamp(2rem, 7vw, 4.6rem);
     line-height: .9;
     letter-spacing: 0;
   }
 
+  /* A small non-clickable status label. */
   .badge {
     border: 1px solid var(--border);
     border-radius: 999px;
@@ -65,12 +97,21 @@
     background: rgba(255,255,255,.045);
   }
 
+  /*
+    CSS Grid lays out the app cards.
+    auto-fit + minmax means "create as many columns as fit, but each card
+    needs at least 230px." On narrow iPads/phones this naturally becomes one column.
+  */
   .app-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
     gap: 14px;
   }
 
+  /*
+    Each app-card is an <a> link styled like a card.
+    The entire card is tappable, which is nicer on touch screens than a tiny button.
+  */
   .app-card {
     min-height: 210px;
     display: flex;
@@ -95,6 +136,7 @@
     gap: 12px;
   }
 
+  /* Shared icon size for real PNG icons and CSS-made placeholder icons. */
   .app-icon {
     width: 74px;
     height: 74px;
@@ -102,6 +144,7 @@
     box-shadow: 0 10px 20px rgba(0,0,0,.28);
   }
 
+  /* The Color Chase icon is drawn with CSS squares instead of a separate image. */
   .color-icon {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -152,6 +195,10 @@
     font-size: .76rem;
   }
 
+  /*
+    Media queries are conditional CSS.
+    This block only runs when the viewport is 620px wide or less.
+  */
   @media (max-width: 620px) {
     header { align-items: flex-start; flex-direction: column; }
     .app-grid { grid-template-columns: 1fr; }
@@ -160,11 +207,16 @@
 </head>
 <body>
 <main>
+  <!-- Visible page header. -->
   <header>
     <h1>iPad Apps</h1>
     <div class="badge">GitHub Pages</div>
   </header>
 
+  <!--
+    App cards. To add another app later, copy one <a class="app-card"> block,
+    change the href, title, description, and icon.
+  -->
   <section class="app-grid" aria-label="Available apps">
     <a class="app-card" href="uno-tracker.html">
       <div class="card-top">
