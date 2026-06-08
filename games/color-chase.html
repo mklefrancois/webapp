@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Color Chase">
+<meta name="theme-color" content="#111114">
+<link rel="apple-touch-icon" sizes="180x180" href="../hub-touch-icon.png?v=1">
+<link rel="icon" type="image/png" sizes="32x32" href="../hub-favicon.png?v=1">
+<title>Color Chase</title>
+<style>
+  :root {
+    --red: #E8173A;
+    --yellow: #F5C400;
+    --blue: #0057B8;
+    --green: #00964B;
+    --dark: #111114;
+    --panel: #1C1C21;
+    --border: rgba(255,255,255,.1);
+    --text: #F0EEE8;
+    --muted: rgba(240,238,232,.58);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    min-height: 100dvh;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(232,23,58,.2), transparent 21rem),
+      radial-gradient(circle at 88% 6%, rgba(245,196,0,.14), transparent 20rem),
+      var(--dark);
+    color: var(--text);
+    font-family: ui-rounded, "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    overflow-x: hidden;
+  }
+
+  button { font: inherit; }
+
+  main {
+    width: min(860px, 100%);
+    margin: 0 auto;
+    padding: 16px 14px 38px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .back {
+    color: var(--muted);
+    text-decoration: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 9px 12px;
+    background: rgba(255,255,255,.045);
+  }
+
+  h1 {
+    font-size: clamp(2rem, 7vw, 4rem);
+    line-height: .95;
+    letter-spacing: 0;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255,255,255,.055), rgba(255,255,255,.018)), var(--panel);
+    padding: 16px;
+    box-shadow: 0 16px 34px rgba(0,0,0,.22);
+    margin-bottom: 14px;
+  }
+
+  .status {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .stat {
+    min-height: 72px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: rgba(255,255,255,.04);
+    padding: 11px;
+  }
+
+  .stat span {
+    display: block;
+    color: var(--muted);
+    font-size: .72rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .stat strong {
+    font-size: 1.65rem;
+    line-height: 1;
+    font-weight: 950;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .target {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 14px;
+    align-items: center;
+  }
+
+  .target-card {
+    height: 120px;
+    border-radius: 16px;
+    border: 8px solid #fff;
+    background: var(--target-color);
+    box-shadow: 0 12px 22px rgba(0,0,0,.28);
+    transform: rotate(-7deg);
+  }
+
+  .target-title {
+    color: var(--muted);
+    font-size: .76rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .target-name {
+    font-size: clamp(2rem, 8vw, 4.2rem);
+    line-height: .94;
+    font-weight: 950;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+
+  .tile {
+    min-height: 118px;
+    border: 0;
+    border-radius: 12px;
+    background: var(--tile-color);
+    color: #fff;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.18), 0 12px 20px rgba(0,0,0,.22);
+  }
+
+  .tile::before {
+    content: "";
+    position: absolute;
+    inset: 14px;
+    border: 4px solid rgba(255,255,255,.84);
+    border-radius: 10px;
+  }
+
+  .tile span {
+    position: relative;
+    z-index: 1;
+    display: inline-grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    border-radius: 999px;
+    background: rgba(0,0,0,.28);
+    color: #fff;
+    font-size: 1.55rem;
+    font-weight: 950;
+  }
+
+  .tile:active { transform: scale(.98); }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .primary, .secondary {
+    min-height: 52px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 950;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+
+  .primary {
+    border: 0;
+    background: linear-gradient(135deg, var(--red), #bd0f29);
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(232,23,58,.28);
+  }
+
+  .secondary {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,.06);
+    color: var(--muted);
+  }
+
+  .toast {
+    min-height: 24px;
+    color: var(--muted);
+    text-align: center;
+    margin-top: 10px;
+  }
+
+  .locked .tile { filter: grayscale(.45) brightness(.7); }
+
+  @media (max-width: 640px) {
+    header { align-items: flex-start; flex-direction: column; }
+    .status { grid-template-columns: repeat(2, 1fr); }
+    .target { grid-template-columns: 72px 1fr; }
+    .target-card { height: 96px; border-width: 6px; }
+    .grid { gap: 8px; }
+    .tile { min-height: 98px; }
+    .controls { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Color Chase</h1>
+    <a class="back" href="../index.html">App Shelf</a>
+  </header>
+
+  <section class="panel status" aria-label="Game status">
+    <div class="stat"><span>Score</span><strong id="score">0</strong></div>
+    <div class="stat"><span>Time</span><strong id="time">30</strong></div>
+    <div class="stat"><span>Combo</span><strong id="combo">0</strong></div>
+    <div class="stat"><span>Best</span><strong id="best">0</strong></div>
+  </section>
+
+  <section class="panel target" id="target-panel">
+    <div class="target-card" id="target-card"></div>
+    <div>
+      <div class="target-title">Target</div>
+      <div class="target-name" id="target-name">RED</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="grid locked" id="grid"></div>
+    <div class="toast" id="toast">Press Start.</div>
+  </section>
+
+  <section class="controls">
+    <button class="primary" onclick="startGame()">Start</button>
+    <button class="secondary" onclick="resetBest()">Reset Best</button>
+  </section>
+</main>
+
+<script>
+const COLORS = [
+  { name: 'RED', value: '#E8173A', short: 'R' },
+  { name: 'YELLOW', value: '#F5C400', short: 'Y' },
+  { name: 'BLUE', value: '#0057B8', short: 'B' },
+  { name: 'GREEN', value: '#00964B', short: 'G' }
+];
+
+const ROUND_SECONDS = 30;
+const TILE_COUNT = 9;
+const BEST_KEY = 'color_chase_best';
+
+let score = 0;
+let combo = 0;
+let timeLeft = ROUND_SECONDS;
+let target = COLORS[0];
+let running = false;
+let timer = null;
+let tileColors = [];
+
+function pickColor(exceptName) {
+  const pool = COLORS.filter(color => color.name !== exceptName);
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function shuffle(items) {
+  const next = items.slice();
+  for (let i = next.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+function getBest() {
+  return parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
+}
+
+function setBest(value) {
+  localStorage.setItem(BEST_KEY, String(value));
+  document.getElementById('best').textContent = value;
+}
+
+function renderStatus() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('time').textContent = timeLeft;
+  document.getElementById('combo').textContent = combo;
+  document.getElementById('best').textContent = getBest();
+}
+
+function renderTarget() {
+  document.getElementById('target-panel').style.setProperty('--target-color', target.value);
+  document.getElementById('target-name').textContent = target.name;
+}
+
+function buildRound() {
+  target = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const targetCopies = Math.random() > .5 ? 2 : 1;
+  tileColors = [];
+  for (let i = 0; i < targetCopies; i++) tileColors.push(target);
+  while (tileColors.length < TILE_COUNT) tileColors.push(pickColor(target.name));
+  tileColors = shuffle(tileColors);
+  renderTarget();
+  renderGrid();
+}
+
+function renderGrid() {
+  const grid = document.getElementById('grid');
+  grid.classList.toggle('locked', !running);
+  grid.innerHTML = tileColors.map((color, index) => `
+    <button class="tile" style="--tile-color:${color.value}" onclick="tapTile(${index})" aria-label="${color.name}">
+      <span>${color.short}</span>
+    </button>
+  `).join('');
+}
+
+function tapTile(index) {
+  if (!running) return;
+  const picked = tileColors[index];
+  if (picked.name === target.name) {
+    combo++;
+    score += 10 + Math.min(combo, 10);
+    document.getElementById('toast').textContent = '+' + (10 + Math.min(combo, 10));
+    buildRound();
+  } else {
+    combo = 0;
+    score = Math.max(0, score - 5);
+    document.getElementById('toast').textContent = 'Miss';
+    renderGrid();
+  }
+  renderStatus();
+}
+
+function startGame() {
+  clearInterval(timer);
+  score = 0;
+  combo = 0;
+  timeLeft = ROUND_SECONDS;
+  running = true;
+  document.getElementById('toast').textContent = 'Go.';
+  buildRound();
+  renderStatus();
+  timer = setInterval(tick, 1000);
+}
+
+function tick() {
+  timeLeft--;
+  renderStatus();
+  if (timeLeft <= 0) endGame();
+}
+
+function endGame() {
+  clearInterval(timer);
+  running = false;
+  renderGrid();
+  if (score > getBest()) setBest(score);
+  document.getElementById('toast').textContent = 'Final score: ' + score;
+  renderStatus();
+}
+
+function resetBest() {
+  setBest(0);
+  document.getElementById('toast').textContent = 'Best reset.';
+}
+
+setBest(getBest());
+buildRound();
+renderStatus();
+renderGrid();
+</script>
+</body>
+</html>

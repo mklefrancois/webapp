@@ -1,20 +1,20 @@
 {
-  "name": "iPad Apps",
-  "short_name": "Apps",
-  "description": "A small shelf of iPad-friendly web apps and games.",
-  "start_url": "./",
+  "name": "UNO Tracker",
+  "short_name": "UNO",
+  "description": "A winner-based UNO score tracker.",
+  "start_url": "./uno-tracker.html",
   "display": "standalone",
   "background_color": "#111114",
   "theme_color": "#E8173A",
   "icons": [
     {
-      "src": "hub-icon-192.png",
+      "src": "icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "hub-icon-512.png",
+      "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
