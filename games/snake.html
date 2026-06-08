@@ -88,14 +88,14 @@
 
   /*
     Portrait/default layout.
-    The grid areas put the stage first, then D-pad left and A/B right at the bottom.
+    The grid areas put the stage first, then A/B left and D-pad right at the bottom.
   */
   .game-layout {
     display: grid;
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
       "stage stage"
-      "dpad actions";
+      "actions dpad";
     gap: 14px;
     align-items: center;
   }
@@ -151,10 +151,15 @@
 
   /*
     The canvas has a fixed internal resolution in JavaScript, but CSS scales it
-    to fit the screen. aspect-ratio keeps it square.
+    to fit its parent panel. aspect-ratio keeps it square.
+
+    Important: this uses width:100% plus max-width instead of viewport units.
+    Viewport units can make the board wider than the stage column, which is
+    what caused the controls to overlap the board on wide screens.
   */
   .board-frame {
-    width: min(92vw, 620px);
+    width: 100%;
+    max-width: 620px;
     aspect-ratio: 1;
     margin: 0 auto;
     border: 1px solid var(--border);
@@ -286,7 +291,7 @@
 
     .game-layout {
       flex: 1;
-      grid-template-columns: minmax(154px, 188px) minmax(340px, min(68vh, 62vw)) minmax(154px, 188px);
+      grid-template-columns: clamp(136px, 16vw, 188px) minmax(0, min(64vh, 52vw, 620px)) clamp(136px, 16vw, 188px);
       grid-template-areas: "actions stage dpad";
       justify-content: center;
       align-items: center;
@@ -295,10 +300,6 @@
     .stage {
       max-height: calc(100dvh - 110px);
       justify-content: center;
-    }
-
-    .board-frame {
-      width: min(68vh, 62vw, 620px);
     }
 
     .control-panel {
