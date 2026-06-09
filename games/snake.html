@@ -192,15 +192,20 @@
 
   /*
     D-pad is a 3x3 CSS grid. Empty cells preserve the cross shape.
-    The buttons call setDirection() in JavaScript.
+    JavaScript also treats the whole D-pad as a small joystick surface:
+    touch anywhere, slide, and the dominant axis becomes the direction.
   */
   .dpad {
+    --stick-x: 0px;
+    --stick-y: 0px;
     width: min(42vw, 174px);
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
     gap: 6px;
+    position: relative;
+    touch-action: none;
   }
 
   .dpad button, .action-button {
@@ -209,7 +214,7 @@
     cursor: pointer;
     position: relative;
     overflow: hidden;
-    touch-action: manipulation;
+    touch-action: none;
     text-shadow: 0 1px 1px rgba(0,0,0,.45);
   }
 
@@ -238,6 +243,34 @@
     border-radius: 9px;
     background: rgba(255,255,255,.06);
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+    position: relative;
+    overflow: visible;
+  }
+
+  .dpad .center::after {
+    content: "";
+    position: absolute;
+    inset: 22%;
+    border-radius: 999px;
+    background:
+      radial-gradient(circle at 35% 25%, rgba(255,255,255,.38), transparent 32%),
+      linear-gradient(160deg, #34343d, #16161c);
+    box-shadow:
+      inset 0 2px 2px rgba(255,255,255,.12),
+      inset 0 -4px 8px rgba(0,0,0,.38),
+      0 5px 10px rgba(0,0,0,.28);
+    transform: translate(var(--stick-x), var(--stick-y));
+    transition: transform .08s ease-out;
+  }
+
+  .dpad.is-active .center {
+    background: rgba(255,255,255,.11);
+  }
+
+  .dpad button.is-active {
+    background:
+      radial-gradient(circle at 34% 22%, rgba(255,255,255,.22), transparent 34%),
+      linear-gradient(160deg, #18c96b, var(--green) 52%, #063b1e);
   }
   .dpad .right { grid-column: 3; grid-row: 2; }
   .dpad .down { grid-column: 2; grid-row: 3; }
@@ -348,7 +381,7 @@
     move A/B to the left and the D-pad to the right.
   */
   @media (min-aspect-ratio: 4 / 3) and (min-width: 760px) {
-    body { overflow: hidden; }
+    body { overflow-x: hidden; }
 
     main {
       display: flex;
@@ -358,7 +391,7 @@
 
     .game-layout {
       flex: 1;
-      grid-template-columns: clamp(136px, 16vw, 188px) minmax(0, min(64vh, 52vw, 620px)) clamp(136px, 16vw, 188px);
+      grid-template-columns: clamp(132px, 15vw, 180px) minmax(0, min(52vw, calc(100dvh - 190px), 580px)) clamp(132px, 15vw, 180px);
       grid-template-areas: "actions stage dpad";
       justify-content: center;
       align-items: center;
@@ -367,6 +400,27 @@
     .stage {
       max-height: calc(100dvh - 110px);
       justify-content: center;
+      gap: 8px;
+      padding: 10px;
+    }
+
+    .stat {
+      min-height: 52px;
+      padding: 8px;
+    }
+
+    .stat strong {
+      font-size: 1.22rem;
+    }
+
+    .message {
+      min-height: 20px;
+      font-size: .84rem;
+    }
+
+    .board-frame {
+      width: min(100%, calc(100dvh - 226px));
+      max-width: 560px;
     }
 
     .control-panel {
@@ -416,11 +470,11 @@
     <!-- A/B action buttons. In landscape CSS moves this panel to the left. -->
     <section class="panel control-panel action-panel" aria-label="Action buttons">
       <div class="action-pad">
-        <button class="action-button b" onclick="resetGame()" aria-label="Reset game">
+        <button class="action-button b" id="reset-button" type="button" aria-label="Reset game">
           <strong>B</strong>
           <span>Reset</span>
         </button>
-        <button class="action-button a" onclick="startPause()" aria-label="Start or pause game">
+        <button class="action-button a" id="start-button" type="button" aria-label="Start or pause game">
           <strong>A</strong>
           <span id="a-label">Start</span>
         </button>
@@ -444,12 +498,12 @@
 
     <!-- Direction pad. In landscape CSS moves this panel to the right. -->
     <section class="panel control-panel dpad-panel" aria-label="Direction pad">
-      <div class="dpad">
-        <button class="up" onclick="setDirection('up')" aria-label="Move up">^</button>
-        <button class="left" onclick="setDirection('left')" aria-label="Move left">&lt;</button>
+      <div class="dpad" id="dpad">
+        <button class="up" type="button" data-direction="up" aria-label="Move up">^</button>
+        <button class="left" type="button" data-direction="left" aria-label="Move left">&lt;</button>
         <div class="center" aria-hidden="true"></div>
-        <button class="right" onclick="setDirection('right')" aria-label="Move right">&gt;</button>
-        <button class="down" onclick="setDirection('down')" aria-label="Move down">v</button>
+        <button class="right" type="button" data-direction="right" aria-label="Move right">&gt;</button>
+        <button class="down" type="button" data-direction="down" aria-label="Move down">v</button>
       </div>
     </section>
   </section>
@@ -484,10 +538,13 @@ const DIRECTIONS = {
 
 const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
+const dpad = document.getElementById('dpad');
+const dpadButtons = Array.from(document.querySelectorAll('.dpad button[data-direction]'));
 
 let snake = [];
 let direction = DIRECTIONS.right;
 let nextDirection = DIRECTIONS.right;
+let pendingDirections = [];
 let food = { x: 12, y: 10 };
 let score = 0;
 let best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
@@ -496,6 +553,7 @@ let paused = false;
 let gameOver = false;
 let loopId = null;
 let touchStart = null;
+let dpadPointerId = null;
 
 function sameCell(a, b) {
   return a.x === b.x && a.y === b.y;
@@ -526,6 +584,7 @@ function resetGame() {
   ];
   direction = DIRECTIONS.right;
   nextDirection = DIRECTIONS.right;
+  pendingDirections = [];
   score = 0;
   running = false;
   paused = false;
@@ -570,16 +629,33 @@ function startPause() {
 }
 
 /*
-  Direction changes are delayed until the next game step.
-  This prevents double-tap reversals from making the snake collide with itself.
+  Direction changes are delayed until game steps, but we keep a small queue.
+  That makes quick corner moves easier on touch screens:
+  "up, then left" can be remembered even if both touches happen before the
+  next timer step.
 */
 function setDirection(name) {
   const requested = DIRECTIONS[name];
-  if (!requested || gameOver) return;
+  if (!requested || gameOver) return false;
 
-  const reversing = requested.x + direction.x === 0 && requested.y + direction.y === 0;
-  if (reversing) return;
-  nextDirection = requested;
+  const base = pendingDirections.length ? pendingDirections[pendingDirections.length - 1] : direction;
+  if (sameDirection(requested, base)) return true;
+
+  const reversing = requested.x + base.x === 0 && requested.y + base.y === 0;
+  if (reversing) return false;
+
+  pendingDirections.push(requested);
+  if (pendingDirections.length > 2) pendingDirections.shift();
+  nextDirection = pendingDirections[0] || requested;
+  return true;
+}
+
+function sameDirection(a, b) {
+  return a.x === b.x && a.y === b.y;
+}
+
+function directionNameFromVector(vector) {
+  return Object.keys(DIRECTIONS).find(name => sameDirection(DIRECTIONS[name], vector)) || '';
 }
 
 function scheduleStep() {
@@ -590,7 +666,8 @@ function scheduleStep() {
 }
 
 function step() {
-  direction = nextDirection;
+  direction = pendingDirections.shift() || direction;
+  nextDirection = pendingDirections[0] || direction;
   const head = snake[0];
   const nextHead = {
     x: head.x + direction.x,
@@ -695,6 +772,121 @@ function drawSnake() {
   });
 }
 
+/*
+  Immediate button binding.
+  Native click runs after the touch completes; pointerdown runs as soon as the
+  finger touches the screen. The click handler remains for keyboard activation.
+*/
+function bindImmediateButton(id, handler) {
+  const button = document.getElementById(id);
+  let pointerHandledAt = 0;
+
+  button.addEventListener('pointerdown', event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    pointerHandledAt = performance.now();
+    event.preventDefault();
+    handler();
+  }, { passive: false });
+
+  button.addEventListener('click', event => {
+    if (performance.now() - pointerHandledAt < 450) {
+      event.preventDefault();
+      return;
+    }
+    handler();
+  });
+}
+
+/*
+  D-pad joystick behavior.
+  The whole D-pad is one input surface. We compare the finger position with the
+  center of the pad; whichever axis is stronger becomes the requested direction.
+*/
+function dpadDirectionFromPoint(clientX, clientY) {
+  const rect = dpad.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  const dx = clientX - centerX;
+  const dy = clientY - centerY;
+  const deadZone = Math.min(rect.width, rect.height) * .11;
+
+  if (Math.hypot(dx, dy) < deadZone) return null;
+
+  const name = Math.abs(dx) > Math.abs(dy)
+    ? (dx > 0 ? 'right' : 'left')
+    : (dy > 0 ? 'down' : 'up');
+  const maxPuckMove = Math.min(rect.width, rect.height) * .11;
+  const maxAxis = Math.max(Math.abs(dx), Math.abs(dy), 1);
+
+  return {
+    name,
+    x: Math.max(-maxPuckMove, Math.min(maxPuckMove, dx * maxPuckMove / maxAxis)),
+    y: Math.max(-maxPuckMove, Math.min(maxPuckMove, dy * maxPuckMove / maxAxis))
+  };
+}
+
+function setDpadVisual(name, puckX, puckY) {
+  dpad.classList.toggle('is-active', Boolean(name));
+  dpad.style.setProperty('--stick-x', Math.round(puckX) + 'px');
+  dpad.style.setProperty('--stick-y', Math.round(puckY) + 'px');
+  dpadButtons.forEach(button => {
+    button.classList.toggle('is-active', button.dataset.direction === name);
+  });
+}
+
+function clearDpadVisual() {
+  setDpadVisual('', 0, 0);
+}
+
+function handleDpadPointer(event) {
+  const result = dpadDirectionFromPoint(event.clientX, event.clientY);
+  if (!result) {
+    clearDpadVisual();
+    event.preventDefault();
+    return;
+  }
+
+  const accepted = setDirection(result.name);
+  setDpadVisual(accepted ? result.name : directionNameFromVector(nextDirection), result.x, result.y);
+  event.preventDefault();
+}
+
+function bindDpadJoystick() {
+  dpad.addEventListener('pointerdown', event => {
+    if (event.button !== undefined && event.button !== 0) return;
+    dpadPointerId = event.pointerId;
+    dpad.setPointerCapture(event.pointerId);
+    handleDpadPointer(event);
+  }, { passive: false });
+
+  dpad.addEventListener('pointermove', event => {
+    if (event.pointerId !== dpadPointerId) return;
+    handleDpadPointer(event);
+  }, { passive: false });
+
+  dpad.addEventListener('pointerup', event => {
+    if (event.pointerId !== dpadPointerId) return;
+    dpadPointerId = null;
+    clearDpadVisual();
+    event.preventDefault();
+  }, { passive: false });
+
+  dpad.addEventListener('pointercancel', event => {
+    if (event.pointerId !== dpadPointerId) return;
+    dpadPointerId = null;
+    clearDpadVisual();
+  });
+
+  dpadButtons.forEach(button => {
+    button.addEventListener('click', event => {
+      setDirection(button.dataset.direction);
+      setDpadVisual(button.dataset.direction, 0, 0);
+      setTimeout(clearDpadVisual, 140);
+      event.preventDefault();
+    });
+  });
+}
+
 // Desktop keyboard support. The touch controls use the same setDirection function.
 document.addEventListener('keydown', event => {
   if (event.key === 'ArrowUp') setDirection('up');
@@ -732,6 +924,9 @@ canvas.addEventListener('touchend', event => {
   event.preventDefault();
 }, { passive: false });
 
+bindImmediateButton('reset-button', resetGame);
+bindImmediateButton('start-button', startPause);
+bindDpadJoystick();
 resetGame();
 </script>
 </body>
